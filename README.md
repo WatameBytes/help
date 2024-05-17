@@ -1,3 +1,50 @@
+`
+import os
+import re
+
+def process_java_file(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    
+    output_lines = []
+    inside_chunk = False
+
+    for i, line in enumerate(lines):
+        output_lines.append(line)
+        if not inside_chunk and re.search(r'public class \w+ extends', line):
+            inside_chunk = True
+            continue
+
+        if inside_chunk:
+            if re.search(r'@JoinColumn', line):
+                for j in range(i, len(lines)):
+                    output_lines.append(lines[j])
+                    if re.search(r'@ManyToOne', lines[j]):
+                        if re.search(r'@Column', lines[j+1]):
+                            lines[j+1] = "// " + lines[j+1]  # Comment out the @Column line
+                            output_lines.append(lines[j+1])
+                        break
+                    if re.search(r'(private|\})', lines[j]):
+                        break
+            if re.search(r'(private|\})', line):
+                inside_chunk = False
+
+    with open(file_path, 'w') as file:
+        file.writelines(output_lines)
+
+def recursively_process_java_files(directory):
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if file.endswith('.java'):
+                file_path = os.path.join(root, file)
+                process_java_file(file_path)
+
+if __name__ == '__main__':
+    current_directory = os.getcwd()
+    recursively_process_java_files(current_directory)
+`
+
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
