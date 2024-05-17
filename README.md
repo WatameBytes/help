@@ -1,4 +1,29 @@
 ```
+#!/bin/bash
+
+# Get the directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$SCRIPT_DIR/identity"
+
+# Change to the project directory
+cd "$PROJECT_DIR" || { echo "Directory not found: $PROJECT_DIR"; exit 1; }
+
+# Perform a git pull on the main branch
+git checkout main && git pull
+
+# Check if the branch name is provided
+if [ -n "$1" ]; then
+  BRANCH=$1
+
+  # Check out the specified branch
+  git checkout "$BRANCH" || { echo "Branch not found: $BRANCH"; exit 1; }
+fi
+
+# Open the project directory in IntelliJ IDEA
+idea "$PROJECT_DIR"
+```
+
+```
 import os
 import re
 
