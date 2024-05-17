@@ -5,6 +5,43 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR/identity"
 
+# Ensure the 'idea' command is available
+if ! command -v idea &> /dev/null
+then
+    echo "'idea' command not found. Please ensure IntelliJ IDEA command-line launcher is set up."
+    exit 1
+fi
+
+# Change to the project directory
+cd "$PROJECT_DIR" || { echo "Directory not found: $PROJECT_DIR"; exit 1; }
+
+# Perform a git pull on the main branch
+git checkout main && git pull
+
+# Check if the branch name is provided
+if [ -n "$1" ]; then
+  BRANCH=$1
+
+  # Check out the specified branch
+  git checkout "$BRANCH" || { echo "Branch not found: $BRANCH"; exit 1; }
+fi
+
+# Open the project directory in IntelliJ IDEA in a new window
+nohup idea -Didea.new.project.window=true "$PROJECT_DIR" &
+
+# Exit the script
+exit 0
+```
+
+
+
+```
+#!/bin/bash
+
+# Get the directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$SCRIPT_DIR/identity"
+
 # Change to the project directory
 cd "$PROJECT_DIR" || { echo "Directory not found: $PROJECT_DIR"; exit 1; }
 
