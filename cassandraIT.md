@@ -1,4 +1,21 @@
 ```
+@Service
+public class PersonaService {
+
+    @Autowired
+    private PersonaRepository personaRepository;
+
+    public boolean deleteByCredentialId(String credentialId) {
+        int result = personaRepository.deleteByCredentialIdReturningCount(credentialId);
+        return result == 1;
+    }
+}
+
+@Query("DELETE FROM persona WHERE credential_id = :credentialId")
+int deleteByCredentialIdReturningCount(@Param("credentialId") String credentialId);
+```
+
+```
 @Data
 @NoArgsConstructor
 @Table
