@@ -1,3 +1,4 @@
+```
 @Data
 @NoArgsConstructor
 @Table
@@ -158,7 +159,4 @@ public class AuthenticatorPasskeyRepositoryIT {
         assertThat(passkeys).hasSize(2);
     }
 }
-
-
-
-
+```
