@@ -16,17 +16,23 @@ def generate_enum_unit_tests(input_file, output_file):
 
             # Process each line to extract the enum and its values
             for line in lines:
-                # Regex to match CID(0, "VALUE")
+                # Regex to match ENUMNAME(challengeNumber, "displayName")
                 match = re.match(r'(\w+)\(([^,]+),\s*\"([^"]+)\"\)', line)
                 if match:
                     enum_name = match.group(1)
-                    number = match.group(2)
-                    value = match.group(3)
+                    challenge_number = match.group(2)
+                    display_name = match.group(3)
 
-                    # Generate a unit test for the current enum
+                    # Generate a unit test for getDisplayName
                     outfile.write(f"    @Test\n")
-                    outfile.write(f"    public void test{enum_name}() {{\n")
-                    outfile.write(f"        assertEquals({enum_name}.get({number}), \"{value}\");\n")
+                    outfile.write(f"    public void test_GETDISPLAYNAME_{enum_name.upper()}() {{\n")
+                    outfile.write(f"        assertEquals(ChallengeFieldEnums.{enum_name}.getDisplayName(), \"{display_name}\");\n")
+                    outfile.write(f"    }}\n\n")
+
+                    # Generate a unit test for getChallengeNumber
+                    outfile.write(f"    @Test\n")
+                    outfile.write(f"    public void test_GETCHALLENGENUMBER_{enum_name.upper()}() {{\n")
+                    outfile.write(f"        assertEquals(ChallengeFieldEnums.{enum_name}.getChallengeNumber(), {challenge_number});\n")
                     outfile.write(f"    }}\n\n")
 
             outfile.write("}")
