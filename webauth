@@ -1,0 +1,147 @@
+```
+import React, { useState, useEffect } from 'react';
+import { startAuthentication } from '@simplewebauthn/browser';
+
+const WebAuthnAuth = () => {
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [authOptions, setAuthOptions] = useState(null);
+
+  // Fetch authentication options on component mount
+  useEffect(() => {
+    const fetchAuthOptions = async () => {
+      try {
+        const response = await fetch('/api/auth/webauthn/authentication-options', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          // You might not need to send username for conditional UI
+          // as it's not yet known
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to get authentication options');
+        }
+
+        const options = await response.json();
+        // Add conditional mediation
+        options.mediation = 'conditional';
+        setAuthOptions(options);
+      } catch (err) {
+        console.error('Error fetching auth options:', err);
+        setError(err.message);
+      }
+    };
+
+    fetchAuthOptions();
+  }, []);
+
+  // Handle the actual authentication when user interacts with passkey UI
+  const handleAuthentication = async (credential) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Send the authentication response to your server
+      const verificationResp = await fetch('/api/auth/webauthn/authentication-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credential)
+      });
+
+      if (!verificationResp.ok) {
+        throw new Error('Failed to verify authentication');
+      }
+
+      const verification = await verificationResp.json();
+
+      if (verification.verified) {
+        console.log('Successfully authenticated!');
+        // Handle successful login (e.g., redirect or update UI)
+      } else {
+        throw new Error('Authentication failed');
+      }
+    } catch (err) {
+      console.error('Authentication error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Start authentication when options are available
+  useEffect(() => {
+    if (authOptions) {
+      const authenticate = async () => {
+        try {
+          const credential = await startAuthentication(authOptions);
+          await handleAuthentication(credential);
+        } catch (err) {
+          // Don't set error here for conditional UI
+          // as user might not have interacted yet
+          console.debug('Conditional auth not triggered:', err);
+        }
+      };
+
+      authenticate();
+    }
+  }, [authOptions]);
+
+  // For manual authentication button (fallback)
+  const handleManualAuth = async () => {
+    if (!authOptions) {
+      setError('Authentication options not available');
+      return;
+    }
+
+    try {
+      // Remove conditional mediation for manual button
+      const manualOptions = {
+        ...authOptions,
+        mediation: undefined
+      };
+      const credential = await startAuthentication(manualOptions);
+      await handleAuthentication(credential);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-md mx-auto p-4">
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+
+      <input
+        type="text"
+        autoComplete="username webauthn"
+        className="w-full px-4 py-2 mb-4 border rounded"
+        placeholder="Username"
+      />
+
+      {/* Fallback button */}
+      <button
+        onClick={handleManualAuth}
+        disabled={loading || !authOptions}
+        className="w-full px-4 py-2 text-white bg-blue-600 rounded hover:bg-blue-700 disabled:opacity-50"
+      >
+        {loading ? 'Authenticating...' : 'Sign in with Passkey'}
+      </button>
+
+      {loading && (
+        <div className="mt-4 text-center text-gray-600">
+          Please follow your browser's prompts to authenticate...
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default WebAuthnAuth;
+```
