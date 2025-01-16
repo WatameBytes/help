@@ -1,0 +1,159 @@
+```
+@ExtendWith(MockitoExtension.class)
+class CredentialServiceTest {
+    // ... existing mocks ...
+
+    @Test
+    void addCredential_whenIdentityExists_addsCredentialSuccessfully() {
+        // Arrange
+        String publicGuid = "public-guid";
+        String credentialIdBase64 = "SGVsbG8gV29ybGQ="; // valid base64
+        byte[] publicKey = "test-key".getBytes();
+        String attestationGuid = "attestation-guid";
+        
+        IdentityEntity identity = mock(IdentityEntity.class);
+        when(identityRepository.findByPublicIdentityId(publicGuid))
+            .thenReturn(Optional.of(identity));
+        
+        IdentityAuthenticatorEntity authenticator = mock(IdentityAuthenticatorEntity.class);
+        doReturn(authenticator)
+            .when(credentialService)
+            .createNewAuthenticator(identity);
+        
+        doNothing()
+            .when(credentialService)
+            .addPasskeyToAuthenticator(authenticator, credentialIdBase64, publicKey, attestationGuid);
+
+        // Act
+        credentialService.addCredential(publicGuid, credentialIdBase64, publicKey, attestationGuid);
+
+        // Assert
+        verify(authenticatorRepository).save(authenticator);
+    }
+
+    @Test
+    void addCredential_whenIdentityNotFound_throwsException() {
+        // Arrange
+        String publicGuid = "public-guid";
+        when(identityRepository.findByPublicIdentityId(publicGuid))
+            .thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(EntityNotFoundException.class, 
+            () -> credentialService.addCredential(publicGuid, "base64", new byte[0], "guid"));
+    }
+
+    @Test
+    void createNewAuthenticator_createsCorrectly() {
+        // Arrange
+        IdentityEntity identity = mock(IdentityEntity.class);
+        AuthenticatorTypeEntity passkeyType = mock(AuthenticatorTypeEntity.class);
+        
+        when(authenticatorTypeEntityRepository.findByType(AuthenticatorType.PASSKEY))
+            .thenReturn(passkeyType);
+
+        // Act
+        IdentityAuthenticatorEntity result = credentialService.createNewAuthenticator(identity);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(identity, result.getIdentityEntity());
+        // Add assertions for other setters
+    }
+
+    @Test
+    void addPasskeyToAuthenticator_whenNoExistingPasskeys_setsNewList() throws SQLException {
+        // Arrange
+        IdentityAuthenticatorEntity authenticator = mock(IdentityAuthenticatorEntity.class);
+        when(authenticator.getAuthenticatorPasskeyEntities()).thenReturn(null);
+        
+        String credentialIdBase64 = "SGVsbG8gV29ybGQ=";
+        byte[] publicKey = "test-key".getBytes();
+        String attestationGuid = "attestation-guid";
+
+        // Act
+        credentialService.addPasskeyToAuthenticator(
+            authenticator, 
+            credentialIdBase64, 
+            publicKey, 
+            attestationGuid
+        );
+
+        // Assert
+        ArgumentCaptor<List<AuthenticatorPasskeyEntity>> passkeyListCaptor = 
+            ArgumentCaptor.forClass(List.class);
+        verify(authenticator).setAuthenticatorPasskeyEntities(passkeyListCaptor.capture());
+        
+        List<AuthenticatorPasskeyEntity> passkeys = passkeyListCaptor.getValue();
+        assertEquals(1, passkeys.size());
+        AuthenticatorPasskeyEntity passkey = passkeys.get(0);
+        // Verify passkey properties
+    }
+
+    @Test
+    void addPasskeyToAuthenticator_whenExistingPasskeys_addsToList() throws SQLException {
+        // Arrange
+        IdentityAuthenticatorEntity authenticator = mock(IdentityAuthenticatorEntity.class);
+        List<AuthenticatorPasskeyEntity> existingPasskeys = new ArrayList<>();
+        when(authenticator.getAuthenticatorPasskeyEntities()).thenReturn(existingPasskeys);
+        
+        // Act
+        credentialService.addPasskeyToAuthenticator(
+            authenticator,
+            "SGVsbG8gV29ybGQ=",
+            "test-key".getBytes(),
+            "attestation-guid"
+        );
+
+        // Assert
+        assertEquals(1, existingPasskeys.size());
+        // Verify passkey properties
+    }
+
+    @Test
+    void addPasskeyToAuthenticator_whenBlobCreationFails_throwsException() throws SQLException {
+        // Arrange
+        IdentityAuthenticatorEntity authenticator = mock(IdentityAuthenticatorEntity.class);
+        byte[] publicKey = "test-key".getBytes();
+        
+        // Simulate SQL exception during Blob creation
+        doThrow(new SQLException("Blob creation failed"))
+            .when(authenticator)
+            .setAuthenticatorPasskeyEntities(any());
+
+        // Act & Assert
+        assertThrows(ApplicationServerException.class, 
+            () -> credentialService.addPasskeyToAuthenticator(
+                authenticator,
+                "SGVsbG8gV29ybGQ=",
+                publicKey,
+                "attestation-guid"
+            ));
+    }
+
+    @Test
+    void blobToByteArray_whenBlobIsNull_returnsEmptyByteArray() {
+        // Act
+        ByteArray result = credentialService.blobToByteArray(null);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(0, result.getBytes().length);
+    }
+
+    @Test
+    void blobToByteArray_whenBlobExists_convertsCorrectly() throws SQLException, IOException {
+        // Arrange
+        byte[] expectedBytes = "test-data".getBytes();
+        Blob blob = mock(Blob.class);
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(expectedBytes);
+        when(blob.getBinaryStream()).thenReturn(inputStream);
+
+        // Act
+        ByteArray result = credentialService.blobToByteArray(blob);
+
+        // Assert
+        assertArrayEquals(expectedBytes, result.getBytes());
+    }
+}
+```
