@@ -1,0 +1,140 @@
+```
+@ExtendWith(MockitoExtension.class)
+class CreateAuthenticatorPasskeyRegistrationServiceTest {
+    @Mock
+    private RelyingParty relyingParty;
+    
+    @Mock
+    private ChallengeExtractor challengeExtractor;
+    
+    @Mock
+    private CredentialService credentialService;
+    
+    @Mock
+    private ErrorHandler errorHandler;
+    
+    private CreateAuthenticatorPasskeyRegistrationService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new CreateAuthenticatorPasskeyRegistrationService(
+            relyingParty,
+            challengeExtractor,
+            credentialService,
+            errorHandler
+        );
+    }
+
+    @Test
+    void executeCreate_successfulRegistration() throws Exception {
+        // Arrange
+        HttpHeaders headers = new HttpHeaders();
+        CreateAuthenticatorPasskeyRegistrationRequest request = mock(CreateAuthenticatorPasskeyRegistrationRequest.class);
+        String registrationId = "test-registration-id";
+        String publicKeyCredentialString = "test-credential-string";
+        
+        when(request.getRegistrationId()).thenReturn(registrationId);
+        when(request.getPublicKeyCredentialString()).thenReturn(publicKeyCredentialString);
+        
+        PublicKeyCredentialCreationOptions creationOptions = mock(PublicKeyCredentialCreationOptions.class);
+        when(challengeExtractor.findChallenge(eq(registrationId), eq(PublicKeyCredentialCreationOptions.class)))
+            .thenReturn(Optional.of(creationOptions));
+        
+        // Mock the static PublicKeyCredential.parseRegistrationResponseJson
+        PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> credential = 
+            mock(PublicKeyCredential.class);
+        try (MockedStatic<PublicKeyCredential> mockedStatic = mockStatic(PublicKeyCredential.class)) {
+            mockedStatic.when(() -> PublicKeyCredential.parseRegistrationResponseJson(publicKeyCredentialString))
+                .thenReturn(credential);
+            
+            // Mock registration result
+            RegistrationResult registrationResult = mock(RegistrationResult.class);
+            when(relyingParty.finishRegistration(any(FinishRegistrationOptions.class)))
+                .thenReturn(registrationResult);
+            
+            // Mock user ID
+            UserIdentity userIdentity = mock(UserIdentity.class);
+            ByteArray userIdByteArray = mock(ByteArray.class);
+            when(creationOptions.getUser()).thenReturn(userIdentity);
+            when(userIdentity.getId()).thenReturn(userIdByteArray);
+            when(userIdByteArray.getBytes()).thenReturn("test-user-id".getBytes());
+            
+            // Mock registration result getters
+            ByteArray keyId = mock(ByteArray.class);
+            when(registrationResult.getKeyId()).thenReturn(keyId);
+            when(keyId.getBase64()).thenReturn("test-credential-id");
+            
+            when(registrationResult.getPublicKeyCose()).thenReturn(mock(ByteArray.class));
+            when(registrationResult.getAaguid()).thenReturn(mock(ByteArray.class));
+            
+            // Act
+            CreateAuthenticatorPasskeyRegistrationResponse response = 
+                service.executeCreate(headers, request);
+            
+            // Assert
+            assertNotNull(response);
+            verify(credentialService).addCredential(
+                anyString(),  // publicGuid
+                eq("test-credential-id"),  // credentialIdBase64
+                any(byte[].class),  // publicKey
+                anyString()  // attestationGuid
+            );
+        }
+    }
+
+    @Test
+    void executeCreate_challengeNotFound() {
+        // Arrange
+        HttpHeaders headers = new HttpHeaders();
+        CreateAuthenticatorPasskeyRegistrationRequest request = mock(CreateAuthenticatorPasskeyRegistrationRequest.class);
+        String registrationId = "test-registration-id";
+        
+        when(request.getRegistrationId()).thenReturn(registrationId);
+        when(challengeExtractor.findChallenge(eq(registrationId), eq(PublicKeyCredentialCreationOptions.class)))
+            .thenReturn(Optional.empty());
+        
+        // Assert
+        assertThrows(ApplicationClientException.class, () -> 
+            service.executeCreate(headers, request)
+        );
+    }
+
+    @Test
+    void executeCreate_registrationFailed() throws Exception {
+        // Arrange
+        HttpHeaders headers = new HttpHeaders();
+        CreateAuthenticatorPasskeyRegistrationRequest request = mock(CreateAuthenticatorPasskeyRegistrationRequest.class);
+        String registrationId = "test-registration-id";
+        String publicKeyCredentialString = "test-credential-string";
+        
+        when(request.getRegistrationId()).thenReturn(registrationId);
+        when(request.getPublicKeyCredentialString()).thenReturn(publicKeyCredentialString);
+        
+        PublicKeyCredentialCreationOptions creationOptions = mock(PublicKeyCredentialCreationOptions.class);
+        when(challengeExtractor.findChallenge(eq(registrationId), eq(PublicKeyCredentialCreationOptions.class)))
+            .thenReturn(Optional.of(creationOptions));
+        
+        PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> credential = 
+            mock(PublicKeyCredential.class);
+        
+        try (MockedStatic<PublicKeyCredential> mockedStatic = mockStatic(PublicKeyCredential.class)) {
+            mockedStatic.when(() -> PublicKeyCredential.parseRegistrationResponseJson(publicKeyCredentialString))
+                .thenReturn(credential);
+            
+            when(relyingParty.finishRegistration(any(FinishRegistrationOptions.class)))
+                .thenThrow(new RegistrationFailedException("Registration failed"));
+            
+            // Mock user ID
+            UserIdentity userIdentity = mock(UserIdentity.class);
+            ByteArray userIdByteArray = mock(ByteArray.class);
+            when(creationOptions.getUser()).thenReturn(userIdentity);
+            when(userIdentity.getId()).thenReturn(userIdByteArray);
+            
+            // Assert
+            assertThrows(RuntimeException.class, () -> 
+                service.executeCreate(headers, request)
+            );
+        }
+    }
+}
+```
