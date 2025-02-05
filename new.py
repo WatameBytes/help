@@ -1,3 +1,53 @@
+# Adjust scale factor to 0.45 (45% of original size)
+scale_factor = 0.45
+new_size = (int(frames[0].width * scale_factor), int(frames[0].height * scale_factor))
+
+# Resize all frames properly to prevent ghosting
+resized_frames = [frame.resize(new_size, Image.Resampling.LANCZOS) for frame in frames]
+
+# Save the resized GIF without compression
+output_path = "tetris_resized_45_no_compress.gif"
+resized_frames[0].save(
+    output_path,
+    save_all=True,
+    append_images=resized_frames[1:],
+    transparency=0,  # Ensures transparency remains correct
+    loop=0,  # Keeps the GIF looping
+    disposal=2  # Prevents ghost frames by clearing each frame before drawing the next
+)
+
+# Return the output file path
+output_path
+
+
+
+
+# Reprocess GIF to fix flickering black background issue
+output_path = "tetris_resized_45_fixed.gif"
+
+# Ensure transparency is handled correctly
+resized_frames[0].save(
+    output_path,
+    save_all=True,
+    append_images=resized_frames[1:],
+    transparency=0,  # Ensure transparency remains intact
+    loop=0,  # Keeps the GIF looping
+    disposal=3  # Use disposal method 3 to prevent flickering
+)
+
+# Return the output file path
+output_path
+
+
+
+
+
+
+
+
+
+
+
 GyTatq4qSFDN7fdlV1o366oBYbvKemFbGi4IXhchgiY
 
 
