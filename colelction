@@ -1,84 +1,51 @@
-{
-  "info": {
-    "name": "Pipeline Topic / Subscription Inspector",
-    "_postman_id": "11111111-2222-3333-4444-555555555555",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Inspect Topics and Subscriptions",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "const DASH_URL = pm.environment.get('details_url');",
-              "if (!DASH_URL) {",
-              "  throw new Error('details_url environment var is empty – paste the dashboard link in variables pane.');",
-              "}",
-              "const path = new URL(DASH_URL).pathname;",
-              "const match = path.match(/\\/details\\/([^/?]+)/);",
-              "if (!match) {",
-              "  throw new Error(\"Couldn't locate '/details/<id>' in the provided URL.\");",
-              "}",
-              "const pid = decodeURIComponent(match[1]);",
-              "pm.environment.set('pipeline_id', pid);",
-              "console.log('Pipeline ID →', pid);"
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "function deepFind(obj, keySub) {",
-              "  const hits = [];",
-              "  (function walk(val) {",
-              "    if (Array.isArray(val)) return val.forEach(walk);",
-              "    if (val && typeof val === 'object') {",
-              "      Object.entries(val).forEach(([k, v]) => {",
-              "        if (k.toLowerCase().includes(keySub)) hits.push({ [k]: v });",
-              "        walk(v);",
-              "      });",
-              "    }",
-              "  })(obj);",
-              "  return hits;",
-              "}",
-              "let jsonData;",
-              "try {",
-              "  jsonData = pm.response.json();",
-              "} catch (e) {",
-              "  pm.test('Response is JSON', () => pm.expect.fail('Not valid JSON'));",
-              "  return;",
-              "}",
-              "const topics = deepFind(jsonData, 'topic');",
-              "const subscriptions = deepFind(jsonData, 'subscription');",
-              "console.log('TOPICS:', topics);",
-              "console.log('SUBSCRIPTIONS:', subscriptions);",
-              "pm.test('Found at least one topic OR subscription', function () {",
-              "  pm.expect(topics.length + subscriptions.length).to.be.above(0);",
-              "});"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/{{pipeline_id}}/sasdasd",
-          "host": ["{{base_url}}"],
-          "path": ["{{pipeline_id}}", "sasdasd"]
-        }
-      },
-      "response": []
+// ===== deepFind function (unchanged) =====
+function deepFind(obj, keySub) {
+  const hits = [];
+  (function walk(val) {
+    if (Array.isArray(val)) return val.forEach(walk);
+    if (val && typeof val === 'object') {
+      Object.entries(val).forEach(([k, v]) => {
+        if (k.toLowerCase().includes(keySub)) hits.push({ [k]: v });
+        walk(v);
+      });
     }
-  ],
-  "variable": [
-    { "key": "base_url", "value": "https://sampkle/mdm-api" },
-    { "key": "details_url", "value": "" },
-    { "key": "pipeline_id", "value": "" }
-  ]
+  })(obj);
+  return hits;
 }
+
+// ===== parse JSON =====
+let jsonData;
+try {
+  jsonData = pm.response.json();
+} catch (e) {
+  pm.test('Response is JSON', () => pm.expect.fail('Not valid JSON'));
+  return;
+}
+
+// ===== extract & simplify =====
+const topicsRaw        = deepFind(jsonData, 'topic');
+const subscriptionsRaw = deepFind(jsonData, 'subscription');
+
+// pull just the values
+const topics        = topicsRaw.map(o => Object.values(o)[0]);
+const subscriptions = subscriptionsRaw.map(o => Object.values(o)[0]);
+
+// ===== clean console print =====
+console.log('\n=== TOPICS ===');
+if (topics.length) {
+  topics.forEach(t => console.log('·', t));
+} else {
+  console.log('(none found)');
+}
+
+console.log('\n=== SUBSCRIPTIONS ===');
+if (subscriptions.length) {
+  subscriptions.forEach(s => console.log('·', s));
+} else {
+  console.log('(none found)');
+}
+
+// ===== keep the test assertion =====
+pm.test('Found at least one topic OR subscription', () => {
+  pm.expect(topics.length + subscriptions.length).to.be.above(0);
+});
