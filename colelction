@@ -1,4 +1,18 @@
-// ===== deepFind function (unchanged) =====
+// ===== CONFIG =====
+// none needed here: we hardcode the endpoint template below
+
+let raw = pm.variables.get('pipeline_ids');
+if (!raw) throw new Error('pipeline_ids not found! Did your pre-request script run?');
+
+let ids;
+try {
+  ids = JSON.parse(raw);
+  if (!Array.isArray(ids) || ids.length === 0) throw '';
+} catch {
+  throw new Error('pipeline_ids must be a JSON array of IDs.');
+}
+
+// ===== deepFind (unchanged) =====
 function deepFind(obj, keySub) {
   const hits = [];
   (function walk(val) {
@@ -13,44 +27,54 @@ function deepFind(obj, keySub) {
   return hits;
 }
 
-// ===== parse JSON =====
-let jsonData;
-try {
-  jsonData = pm.response.json();
-} catch (e) {
-  pm.test('Response is JSON', () => pm.expect.fail('Not valid JSON'));
-  return;
-}
+// ===== MAIN LOOP =====
+let allTopics = [];
+let allSubs   = [];
+let remaining = ids.length;
 
-// ===== extract & simplify, filtering out nulls =====
-const topicsRaw        = deepFind(jsonData, 'topic');
-const subscriptionsRaw = deepFind(jsonData, 'subscription');
+ids.forEach(pid => {
+  // ← replace with your real Lumi IDM API pattern:
+  const url = `https://lumidmapi.companyName/data-ingestion/ingest-data/details/${pid}?tab=dashboard`;
 
-// pull just the values and drop any that are null or undefined
-const topics = topicsRaw
-  .map(o => Object.values(o)[0])
-  .filter(v => v != null);
+  pm.sendRequest({ url, method: 'GET' }, (err, res) => {
+    if (err) {
+      console.error(`Error fetching ${pid}:`, err);
+    } else if (res.code !== 200) {
+      console.error(`Non-200 for ${pid}:`, res.code);
+    } else {
+      let data;
+      try { data = res.json(); }
+      catch (e) {
+        console.error(`Invalid JSON for ${pid}:`, e);
+      }
+      if (data) {
+        const tRaw = deepFind(data, 'topic');
+        const sRaw = deepFind(data, 'subscription');
+        const t = tRaw.map(o => Object.values(o)[0]).filter(v => v != null);
+        const s = sRaw.map(o => Object.values(o)[0]).filter(v => v != null);
+        allTopics = allTopics.concat(t);
+        allSubs   = allSubs.concat(s);
+      }
+    }
 
-const subscriptions = subscriptionsRaw
-  .map(o => Object.values(o)[0])
-  .filter(v => v != null);
+    // once all are back:
+    remaining--;
+    if (remaining === 0) {
+      console.log('\n=== ALL TOPICS ===');
+      if (allTopics.length) allTopics.forEach(x => console.log('·', x));
+      else console.log('(none found)');
 
-// ===== clean console print =====
-console.log('\n=== TOPICS ===');
-if (topics.length) {
-  topics.forEach(t => console.log('·', t));
-} else {
-  console.log('(none found)');
-}
+      console.log('\n=== ALL SUBSCRIPTIONS ===');
+      if (allSubs.length)   allSubs.forEach(x => console.log('·', x));
+      else console.log('(none found)');
 
-console.log('\n=== SUBSCRIPTIONS ===');
-if (subscriptions.length) {
-  subscriptions.forEach(s => console.log('·', s));
-} else {
-  console.log('(none found)');
-}
+      pm.test('At least one topic OR subscription across all pipelines', () => {
+        pm.expect(allTopics.length + allSubs.length).to.be.above(0);
+      });
 
-// ===== keep the test assertion =====
-pm.test('Found at least one topic OR subscription', () => {
-  pm.expect(topics.length + subscriptions.length).to.be.above(0);
+      // Optionally store them:
+      pm.environment.set('all_topics', JSON.stringify(allTopics));
+      pm.environment.set('all_subscriptions', JSON.stringify(allSubs));
+    }
+  });
 });
