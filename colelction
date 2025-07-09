@@ -4,39 +4,20 @@
     "_postman_id": "11111111-2222-3333-4444-555555555555",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-
   "item": [
     {
-      "name": "GET {{base_url}}/{{pipeline_id}}/sasdasd",
-      "request": {
-        "method": "GET",
-        "url": {
-          "raw": "{{base_url}}/{{pipeline_id}}/sasdasd",
-          "host": ["{{base_url}}"],
-          "path": ["{{pipeline_id}}", "sasdasd"]
-        },
-        "header": [
-          /* add Authorization or other headers here if needed */
-        ]
-      },
-
+      "name": "Inspect Topics and Subscriptions",
       "event": [
-        /* ---------- PRE-REQUEST SCRIPT ---------- */
         {
           "listen": "prerequest",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "// 1) Grab pipeline_id from the Lumi dashboard URL.",
-              "//    Expects something like:",
-              "//    https://lumi.companyName/data-ingestion/ingest-data/details/123?tab=dashboard",
-              "",
               "const DASH_URL = pm.environment.get('details_url');",
               "if (!DASH_URL) {",
-              "  throw new Error(\"details_url environment var is empty – paste the dashboard link in variables pane.\");",
+              "  throw new Error('details_url environment var is empty – paste the dashboard link in variables pane.');",
               "}",
-              "",
-              "const path  = new URL(DASH_URL).pathname;          // e.g. /data-ingestion/.../details/123",
+              "const path = new URL(DASH_URL).pathname;",
               "const match = path.match(/\\/details\\/([^/?]+)/);",
               "if (!match) {",
               "  throw new Error(\"Couldn't locate '/details/<id>' in the provided URL.\");",
@@ -47,14 +28,11 @@
             ]
           }
         },
-
-        /* ---------- TEST SCRIPT ---------- */
         {
           "listen": "test",
           "script": {
             "type": "text/javascript",
             "exec": [
-              "// Recursively collect every key containing `topic` or `subscription`",
               "function deepFind(obj, keySub) {",
               "  const hits = [];",
               "  (function walk(val) {",
@@ -68,7 +46,6 @@
               "  })(obj);",
               "  return hits;",
               "}",
-              "",
               "let jsonData;",
               "try {",
               "  jsonData = pm.response.json();",
@@ -76,27 +53,32 @@
               "  pm.test('Response is JSON', () => pm.expect.fail('Not valid JSON'));",
               "  return;",
               "}",
-              "",
-              "const topics        = deepFind(jsonData, 'topic');",
+              "const topics = deepFind(jsonData, 'topic');",
               "const subscriptions = deepFind(jsonData, 'subscription');",
-              "",
               "console.log('TOPICS:', topics);",
               "console.log('SUBSCRIPTIONS:', subscriptions);",
-              "",
               "pm.test('Found at least one topic OR subscription', function () {",
               "  pm.expect(topics.length + subscriptions.length).to.be.above(0);",
               "});"
             ]
           }
         }
-      ]
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/{{pipeline_id}}/sasdasd",
+          "host": ["{{base_url}}"],
+          "path": ["{{pipeline_id}}", "sasdasd"]
+        }
+      },
+      "response": []
     }
   ],
-
-  /* ---------- COLLECTION-LEVEL VARIABLES ---------- */
   "variable": [
-    { "key": "base_url",    "value": "https://sampkle/mdm-api" },
-    { "key": "details_url", "value": "PASTE-YOUR-LUMI-DASHBOARD-LINK-HERE" },
+    { "key": "base_url", "value": "https://sampkle/mdm-api" },
+    { "key": "details_url", "value": "" },
     { "key": "pipeline_id", "value": "" }
   ]
 }
