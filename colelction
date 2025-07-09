@@ -22,13 +22,18 @@ try {
   return;
 }
 
-// ===== extract & simplify =====
+// ===== extract & simplify, filtering out nulls =====
 const topicsRaw        = deepFind(jsonData, 'topic');
 const subscriptionsRaw = deepFind(jsonData, 'subscription');
 
-// pull just the values
-const topics        = topicsRaw.map(o => Object.values(o)[0]);
-const subscriptions = subscriptionsRaw.map(o => Object.values(o)[0]);
+// pull just the values and drop any that are null or undefined
+const topics = topicsRaw
+  .map(o => Object.values(o)[0])
+  .filter(v => v != null);
+
+const subscriptions = subscriptionsRaw
+  .map(o => Object.values(o)[0])
+  .filter(v => v != null);
 
 // ===== clean console print =====
 console.log('\n=== TOPICS ===');
