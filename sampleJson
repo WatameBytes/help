@@ -14,3 +14,12 @@
   "createdDateTime": "2025-08-02 12:34:56.789",
   "version": "12.47"
 }
+
+
+SELECT
+  *,
+  FORMAT_TIMESTAMP("%F %T %Ez", created_ts, "America/New_York") AS created_in_edt,
+  EXTRACT(DATE FROM created_ts, "America/New_York") AS created_date_edt
+FROM `sometable.audit_info`
+WHERE EXTRACT(DATE FROM created_ts, "America/New_York") = CURRENT_DATE("America/New_York")
+ORDER BY created_ts DESC;
