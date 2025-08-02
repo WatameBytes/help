@@ -23,3 +23,16 @@ FROM `sometable.audit_info`
 WHERE EXTRACT(DATE FROM created_ts, "America/New_York") = CURRENT_DATE("America/New_York")
 ORDER BY created_ts DESC;
 
+WITH parsed AS (
+  SELECT
+    PARSE_TIMESTAMP("%F %H:%M:%E6S %Z", created_ts) AS ts,
+    t.*
+  FROM `sometable.audit_info` AS t
+)
+SELECT
+  *,
+  FORMAT_TIMESTAMP("%F %T %Ez", ts, "America/New_York") AS created_in_edt,
+  EXTRACT(DATE FROM ts, "America/New_York") AS created_date_edt
+FROM parsed
+WHERE EXTRACT(DATE FROM ts, "America/New_York") = CURRENT_DATE("America/New_York")
+ORDER BY ts DESC;
