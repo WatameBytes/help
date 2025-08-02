@@ -22,3 +22,26 @@
   "createdDateTime": "2025-07-29 08:00:00.123", 
   "version": "5"
 }
+
+
+  {
+    "privateIdentityId": "user12345Identifier67890", 
+    "correlationId": "corr-20250802-abcdef123456", 
+    "logId": "log_98765_session_43210", 
+    "logDatetime": "2025-08-02 09:15:27.532", 
+    "logType": "INFO"
+  },
+  {
+    "privateIdentityId": "AnotherID_WithMixed123  ", 
+    "correlationId": "correlation_ABCDEF_0011223344", 
+    "logId": "session-start-0001", 
+    "logDatetime": "2025-08-02 10:02:05.001", 
+    "logType": "ERROR"
+  },
+  {
+    "privateIdentityId": "ID_20characters_here!!", 
+    "correlationId": "corrXYZ9876543210_extra", 
+    "logId": "log-55555", 
+    "logDatetime": "2025-08-02 11:45:00.999", 
+    "logType": "DEBUG"
+  }
