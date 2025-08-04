@@ -1,0 +1,11 @@
+  -- Created_ts converted to EDT (24-hr)
+  FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(TIMESTAMP(created_ts), "America/New_York")) AS created_ts_edt,
+
+  -- Created_ts converted to EDT (12-hr with AM/PM)
+  FORMAT_DATETIME('%Y-%m-%d %I:%M:%S %p', DATETIME(TIMESTAMP(created_ts), "America/New_York")) AS created_ts_edt_ampm,
+
+  -- dag_run_id extracted + converted to EDT (24-hr)
+  FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(TIMESTAMP(SUBSTR(dag_run_id, 9)), "America/New_York")) AS dag_run_edt,
+
+  -- dag_run_id extracted + converted to EDT (12-hr with AM/PM)
+  FORMAT_DATETIME('%Y-%m-%d %I:%M:%S %p', DATETIME(TIMESTAMP(SUBSTR(dag_run_id, 9)), "America/New_York")) AS dag_run_edt_ampm
